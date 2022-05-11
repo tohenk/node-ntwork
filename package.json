@@ -1,0 +1,27 @@
+{
+  "name": "@ntlab/work",
+  "version": "1.0.0",
+  "description": "Nodejs queue and promise based work queue",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tohenk/node-ntwork.git"
+  },
+  "keywords": [
+    "promise",
+    "queue",
+    "work"
+  ],
+  "author": "Toha <tohenk@yahoo.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tohenk/node-ntwork/issues"
+  },
+  "homepage": "https://github.com/tohenk/node-ntwork#readme",
+  "dependencies": {
+    "debug": "^4.3.4"
+  }
+}
