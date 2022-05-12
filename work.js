@@ -100,7 +100,6 @@ class Work extends EventEmitter {
             }
             // on error handler
             const stop = err => {
-                if (err) console.error(err);
                 w.err = err;
                 always(w);
                 if (options.alwaysResolved) {
