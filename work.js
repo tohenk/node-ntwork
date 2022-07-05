@@ -75,20 +75,29 @@ class Work extends EventEmitter {
             let id = ++seq;
             w.seq = -1;
             // always handler, called both on resolve and on rejet
-            const always = () => {
+            const always = () => new Promise((resolve, reject) => {
                 if (typeof options.done == 'function') {
-                    options.done(w);
+                    options.done(w)
+                        .then(() => resolve())
+                        .catch(err => reject(err))
+                    ;
+                } else {
+                    resolve();
                 }
-            } 
+            });
             // next handler or resolve when none left
             const next = res => {
                 w.result.push(res);
                 w.pres = w.res;
                 w.res = res;
                 if (w.works.length == 0) {
-                    always(w);
-                    debug('%d> resolved with %s', id, w.rres);
-                    resolve(w.rres);
+                    always()
+                        .then(() => {
+                            debug('%d> resolved with %s', id, w.rres);
+                            resolve(w.rres);
+                        })
+                        .catch(err => reject(err))
+                    ;
                 } else {
                     w.once('work', f);
                     if (typeof options.callback == 'function') {
@@ -101,14 +110,18 @@ class Work extends EventEmitter {
             // on error handler
             const stop = err => {
                 w.err = err;
-                always(w);
-                if (options.alwaysResolved) {
-                    debug('%d> rejected but return as resolved', id);
-                    resolve();
-                } else {
-                    debug('%d> rejected with %s', id, err);
-                    reject(err);
-                }
+                always()
+                    .then(() => {
+                        if (options.alwaysResolved) {
+                            debug('%d> rejected but return as resolved', id);
+                            resolve();
+                        } else {
+                            debug('%d> rejected with %s', id, err);
+                            reject(err);
+                        }
+                    })
+                    .catch(err => reject(err))
+                ;
             }
             // worker main handler
             const f = worker => {
