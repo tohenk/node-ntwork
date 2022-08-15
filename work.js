@@ -24,8 +24,10 @@
 
 const EventEmitter = require('events');
 const debug = require('debug')('work');
+const util = require('util');
 
 let seq = 0;
+let dbg = x => x;
 
 /**
  * Promise based worker for easy chaining.
@@ -36,7 +38,16 @@ class Work extends EventEmitter {
 
     constructor(works) {
         super();
-        this.works = works;
+        let idx = 0;
+        this.names = {};
+        this.works = works.map(w => {
+            const worker = Worker.create(w);
+            worker.idx = idx++;
+            if (worker.name) {
+                this.names[worker.name] = worker.idx;
+            }
+            return worker;
+        });
         this.next();
     }
 
@@ -57,8 +68,15 @@ class Work extends EventEmitter {
     }
 
     getRes(idx) {
+        if (typeof idx == 'string') {
+            let sidx = this.names[idx];
+            if (sidx == undefined) {
+                throw new Error(util.format('Named index %s doesn\'t exist!', idx));
+            }
+            idx = sidx;
+        }
         if (idx < 0 || idx >= this.result.length) {
-            throw new Error('Result index is unavailable!');
+            throw new Error(util.format('Index %d is out of bound!', idx));
         }
         return this.result[idx];
     }
@@ -73,8 +91,7 @@ class Work extends EventEmitter {
         const w = new this(workers);
         return new Promise((resolve, reject) => {
             let id = ++seq;
-            w.seq = -1;
-            // always handler, called both on resolve and on rejet
+            // always handler, called both on resolve and on reject
             const always = () => new Promise((resolve, reject) => {
                 if (typeof options.done == 'function') {
                     options.done(w)
@@ -86,14 +103,14 @@ class Work extends EventEmitter {
                 }
             });
             // next handler or resolve when none left
-            const next = res => {
+            const next = (idx, res) => {
                 w.result.push(res);
                 w.pres = w.res;
                 w.res = res;
                 if (w.works.length == 0) {
                     always()
                         .then(() => {
-                            debug('%d> resolved with %s', id, w.rres);
+                            debug('%d> [%d] resolved with %s', id, idx, dbg(w.rres));
                             resolve(w.rres);
                         })
                         .catch(err => reject(err))
@@ -108,15 +125,15 @@ class Work extends EventEmitter {
                 }
             }
             // on error handler
-            const stop = err => {
+            const stop = (idx, err) => {
                 w.err = err;
                 always()
                     .then(() => {
                         if (options.alwaysResolved) {
-                            debug('%d> rejected but return as resolved', id);
+                            debug('%d> [%d] rejected but return as resolved', id, idx);
                             resolve();
                         } else {
-                            debug('%d> rejected with %s', id, err);
+                            debug('%d> [%d] rejected with %s', id, idx, dbg(err));
                             reject(err);
                         }
                     })
@@ -125,52 +142,74 @@ class Work extends EventEmitter {
             }
             // worker main handler
             const f = worker => {
-                let skip = false;
-                // worker signature: [work, state]
-                if (Array.isArray(worker)) {
-                    // any state?
-                    if (worker.length == 2) {
-                        if (typeof worker[1] != 'function') {
-                            return reject('Worker state must be a function!');
-                        }
-                        // state must be evaluated to true to be executed
-                        let state = worker[1](w);
-                        if (!state) {
-                            skip = true;
-                        }
-                    }
-                    worker = worker[0];
-                }
-                // worker must be function
-                if (typeof worker != 'function') {
-                    return reject('Worker must be a function!');
-                }
-                let winfo = worker.toString();
+                const idx = worker.idx;
+                const winfo = worker.handler.toString();
+                const skip = !worker.isEnabled(w);
                 try {
-                    w.seq++;
                     if (skip) {
-                        debug('%d> skip %s', id, winfo);
-                        next(null);
+                        debug('%d> [%d] skip %s', id, idx, winfo);
+                        next(idx, null);
                     } else {
-                        debug('%d> call %s', id, winfo);
-                        worker(w)
+                        debug('%d> [%d] call %s', id, idx, winfo);
+                        worker.handler(w)
                             .then(res => {
-                                debug('%d> return %s', id, res);
+                                debug('%d> [%d] return %s', id, idx, dbg(res));
                                 w.rres = res;
-                                next(res);
+                                next(idx, res);
                             })
                             .catch(err => {
-                                stop(err);
+                                stop(idx, err);
                             })
                         ;
                     }
                 } catch (err) {
                     if (winfo) console.error(winfo);
-                    stop(err);
+                    stop(idx, err);
                 }
             }
             w.once('work', f);
         });
+    }
+
+    static debug(f) {
+        if (typeof f == 'function') {
+            dbg = f;
+        }
+    }
+}
+
+class Worker
+{
+    constructor(work) {
+        if (typeof work == 'function') {
+            this.handler = work;
+        }
+        if (Array.isArray(work)) {
+            if (typeof work[0] != 'function') {
+                throw Error('First element of worker must be function!');
+            }
+            this.handler = work[0];
+            if (work.length > 1) {
+                if (typeof work[1] != 'function') {
+                    throw Error('Second element of worker must be function!');
+                }
+                this.enabled = work[1];
+            }
+            if (work.length > 2) {
+                this.name = work[2];
+            }
+        }
+    }
+
+    isEnabled(caller) {
+        return typeof this.enabled == 'function' ? this.enabled(caller) : true;
+    }
+
+    static create(work) {
+        if (work instanceof Worker) {
+            return work;
+        }
+        return new this(work);
     }
 }
 
