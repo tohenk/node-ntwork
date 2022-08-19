@@ -1,6 +1,6 @@
 {
   "name": "@ntlab/work",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Nodejs queue and promise based work queue",
   "main": "index.js",
   "scripts": {

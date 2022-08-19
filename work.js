@@ -34,7 +34,6 @@ let dbg = x => x;
  */
 class Work extends EventEmitter {
     result = []
-    seq = null
 
     constructor(works) {
         super();
@@ -168,6 +167,16 @@ class Work extends EventEmitter {
                 }
             }
             w.once('work', f);
+            // guard against empty work
+            if (workers.length == 0) {
+                always()
+                    .then(() => {
+                        debug('%d> [-] empty work, resolving instead', id);
+                        resolve();
+                    })
+                    .catch(err => reject(err))
+                ;
+            }
         });
     }
 
