@@ -75,9 +75,13 @@ class Queue extends EventEmitter {
         });
     }
 
-    requeue(queues) {
+    requeue(queues, top) {
         const processNext = this.queues.length == 0 && this.queue == null;
-        Array.prototype.push.apply(this.queues, queues);
+        if (top) {
+            this.queues.unshift(...queues);
+        } else {
+            this.queues.push(...queues);
+        }
         if (processNext) this.next();
     }
 
