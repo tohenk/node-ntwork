@@ -87,6 +87,7 @@ class Work extends EventEmitter {
         if (typeof options == 'function') {
             options = {callback: options};
         }
+        const d = x => typeof options.dbg == 'function' ? options.dbg(x) : dbg(x);
         const w = new this(workers);
         return new Promise((resolve, reject) => {
             let id = ++seq;
@@ -109,7 +110,7 @@ class Work extends EventEmitter {
                 if (w.works.length == 0) {
                     always()
                         .then(() => {
-                            debug('%d> [%d] resolved with %s', id, idx, dbg(w.rres));
+                            debug('%d> [%d] resolved with %s', id, idx, d(w.rres));
                             resolve(w.rres);
                         })
                         .catch(err => reject(err))
@@ -132,7 +133,10 @@ class Work extends EventEmitter {
                             debug('%d> [%d] rejected but return as resolved', id, idx);
                             resolve();
                         } else {
-                            debug('%d> [%d] rejected with %s', id, idx, dbg(err));
+                            debug('%d> [%d] rejected with %s', id, idx, d(err));
+                            if (typeof options.onerror == 'function') {
+                                options.onerror(w);
+                            }
                             reject(err);
                         }
                     })
@@ -141,8 +145,9 @@ class Work extends EventEmitter {
             }
             // worker main handler
             const f = worker => {
+                w.current = worker;
                 const idx = worker.idx;
-                const winfo = worker.handler.toString();
+                const winfo = worker.info;
                 const skip = !worker.isEnabled(w);
                 try {
                     if (skip) {
@@ -152,7 +157,7 @@ class Work extends EventEmitter {
                         debug('%d> [%d] call %s', id, idx, winfo);
                         worker.handler(w)
                             .then(res => {
-                                debug('%d> [%d] return %s', id, idx, dbg(res));
+                                debug('%d> [%d] return %s', id, idx, d(res));
                                 w.rres = res;
                                 next(idx, res);
                             })
@@ -212,6 +217,10 @@ class Worker
 
     isEnabled(caller) {
         return typeof this.enabled == 'function' ? this.enabled(caller) : true;
+    }
+
+    get info() {
+        return this.handler.toString();
     }
 
     static create(work) {
