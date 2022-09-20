@@ -167,7 +167,9 @@ class Work extends EventEmitter {
                         ;
                     }
                 } catch (err) {
-                    if (winfo) console.error(winfo);
+                    if (winfo && options.onerror == undefined) {
+                        console.error('Got error %s:\n%s', err instanceof Error ? err.toString() : err, winfo);
+                    }
                     stop(idx, err);
                 }
             }
