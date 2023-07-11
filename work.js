@@ -92,9 +92,9 @@ class Work extends EventEmitter {
         return new Promise((resolve, reject) => {
             let id = ++seq;
             // always handler, called both on resolve and on reject
-            const always = () => new Promise((resolve, reject) => {
+            const always = err => new Promise((resolve, reject) => {
                 if (typeof options.done == 'function') {
-                    options.done(w)
+                    options.done(w, err)
                         .then(() => resolve())
                         .catch(err => reject(err))
                     ;
@@ -127,7 +127,7 @@ class Work extends EventEmitter {
             // on error handler
             const stop = (idx, err) => {
                 w.err = err;
-                always()
+                always(err)
                     .then(() => {
                         if (options.alwaysResolved) {
                             debug('%d> [%d] rejected but return as resolved', id, idx);
