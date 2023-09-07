@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2022 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2022-2023 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-const EventEmitter  = require('events');
+const EventEmitter = require('events');
 
 /**
  * Queue processing.
@@ -38,15 +38,12 @@ class Queue extends EventEmitter {
         this.next();
     }
 
-    applyHandler() {
-        this.once('queue', this.handler);
-    }
-
-    start() {
+    consume(queue) {
         process.nextTick(() => {
-            if (this.queues.length) {
-                this.queue = this.queues.shift();
-                this.emit('queue', this.queue);
+            if (queue) {
+                this.queue = queue;
+                this.once('queue', this.handler);
+                this.emit('queue', queue);
             }
         });
     }
@@ -57,8 +54,7 @@ class Queue extends EventEmitter {
             if (typeof this.check == 'function') {
                 if (!this.check()) return;
             }
-            this.applyHandler();
-            this.start();
+            this.consume(this.queues.shift());
         } else {
             this.done();
         }
