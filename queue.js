@@ -40,11 +40,9 @@ class Queue extends EventEmitter {
 
     consume(queue) {
         process.nextTick(() => {
-            if (queue) {
-                this.queue = queue;
-                this.once('queue', this.handler);
-                this.emit('queue', queue);
-            }
+            this.queue = queue;
+            this.once('queue', this.handler);
+            this.emit('queue', queue);
         });
     }
 
