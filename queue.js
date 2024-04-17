@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2022-2023 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2022-2024 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -49,7 +49,7 @@ class Queue extends EventEmitter {
     next() {
         if (this.queues.length) {
             if (this.pending) return;
-            if (typeof this.check == 'function') {
+            if (typeof this.check === 'function') {
                 if (!this.check()) return;
             }
             this.consume(this.queues.shift());
@@ -70,7 +70,7 @@ class Queue extends EventEmitter {
     }
 
     requeue(queues, top) {
-        const processNext = this.queues.length == 0 && this.queue == null;
+        const processNext = this.queues.length === 0 && this.queue === null;
         if (top) {
             this.queues.unshift(...queues);
         } else {

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2022-2023 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2022-2024 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -24,7 +24,6 @@
 
 const EventEmitter = require('events');
 const debug = require('debug')('work');
-const util = require('util');
 
 let seq = 0;
 let dbg = x => x;
@@ -67,33 +66,33 @@ class Work extends EventEmitter {
     }
 
     getRes(idx) {
-        if (typeof idx == 'string') {
+        if (typeof idx === 'string') {
             let sidx = this.names[idx];
-            if (sidx == undefined) {
-                throw new Error(util.format('Named index %s doesn\'t exist!', idx));
+            if (sidx === undefined) {
+                throw new Error(`Named index ${idx} doesn't exist!`);
             }
             idx = sidx;
         }
         if (idx < 0 || idx >= this.result.length) {
-            throw new Error(util.format('Index %d is out of bound!', idx));
+            throw new Error(`Index ${idx} is out of bound!`);
         }
         return this.result[idx];
     }
 
     static works(workers, options) {
-        if (typeof options == 'undefined') {
+        if (typeof options === 'undefined') {
             options = {};
         }
-        if (typeof options == 'function') {
+        if (typeof options === 'function') {
             options = {callback: options};
         }
-        const d = x => typeof options.dbg == 'function' ? options.dbg(x) : dbg(x);
+        const d = x => typeof options.dbg === 'function' ? options.dbg(x) : dbg(x);
         const w = new this(workers);
         return new Promise((resolve, reject) => {
             let id = ++seq;
             // always handler, called both on resolve and on reject
             const always = err => new Promise((resolve, reject) => {
-                if (typeof options.done == 'function') {
+                if (typeof options.done === 'function') {
                     options.done(w, err)
                         .then(() => resolve())
                         .catch(err => reject(err))
@@ -107,7 +106,7 @@ class Work extends EventEmitter {
                 w.result.push(res);
                 w.pres = w.res;
                 w.res = res;
-                if (w.works.length == 0) {
+                if (w.works.length === 0) {
                     always()
                         .then(() => {
                             debug('%d> [%d] resolved with %s', id, idx, d(w.rres));
@@ -117,7 +116,7 @@ class Work extends EventEmitter {
                     ;
                 } else {
                     w.once('work', f);
-                    if (typeof options.callback == 'function') {
+                    if (typeof options.callback === 'function') {
                         options.callback(() => w.next());
                     } else {
                         w.next();
@@ -134,7 +133,7 @@ class Work extends EventEmitter {
                             resolve();
                         } else {
                             debug('%d> [%d] rejected with %s', id, idx, d(err));
-                            if (typeof options.onerror == 'function') {
+                            if (typeof options.onerror === 'function') {
                                 options.onerror(w);
                             }
                             reject(err);
@@ -167,7 +166,7 @@ class Work extends EventEmitter {
                         ;
                     }
                 } catch (err) {
-                    if (winfo && options.onerror == undefined) {
+                    if (winfo && options.onerror === undefined) {
                         console.error('Got error %s:\n%s', err instanceof Error ? err.toString() : err, winfo);
                     }
                     stop(idx, err);
@@ -175,7 +174,7 @@ class Work extends EventEmitter {
             }
             w.once('work', f);
             // guard against empty work
-            if (workers.length == 0) {
+            if (workers.length === 0) {
                 always()
                     .then(() => {
                         debug('%d> [-] empty work, resolving instead', id);
@@ -188,7 +187,7 @@ class Work extends EventEmitter {
     }
 
     static debug(f) {
-        if (typeof f == 'function') {
+        if (typeof f === 'function') {
             dbg = f;
         }
     }
@@ -197,28 +196,31 @@ class Work extends EventEmitter {
 class Worker
 {
     constructor(work) {
-        if (typeof work == 'function') {
+        if (typeof work === 'function') {
             this.handler = work;
         }
         if (Array.isArray(work)) {
-            if (typeof work[0] != 'function') {
-                throw Error('First element of worker must be function!');
+            if (typeof work[0] === 'string') {
+                this.name = work.shift();
+            }
+            if (typeof work[0] !== 'function') {
+                throw Error(`Worker handler must be function, got ${typeof work[0]}!`);
             }
             this.handler = work[0];
             if (work.length > 1) {
-                if (typeof work[1] != 'function') {
-                    throw Error('Second element of worker must be function!');
+                if (typeof work[1] !== 'function') {
+                    throw Error(`Worker state handler must be function, got ${typeof work[1]}!`);
                 }
                 this.enabled = work[1];
             }
-            if (work.length > 2) {
-                this.name = work[2];
-            }
+        }
+        if (typeof this.handler !== 'function') {
+            throw Error('Worker handler is required!');
         }
     }
 
     isEnabled(caller) {
-        return typeof this.enabled == 'function' ? this.enabled(caller) : true;
+        return typeof this.enabled === 'function' ? this.enabled(caller) : true;
     }
 
     get info() {
