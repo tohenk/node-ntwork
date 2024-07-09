@@ -79,6 +79,18 @@ class Work extends EventEmitter {
         return this.result[idx];
     }
 
+    getName(idx) {
+        if (!this._indices) {
+            this._indices = Object.values(this.names);
+        }
+        if (!this._names) {
+            this._names = Object.keys(this.names);
+        }
+        if (this._indices.indexOf(idx) >= 0) {
+            return this._names[this._indices.indexOf(idx)];
+        }
+    }
+
     static works(workers, options) {
         if (typeof options === 'undefined') {
             options = {};
@@ -89,7 +101,7 @@ class Work extends EventEmitter {
         const d = x => typeof options.dbg === 'function' ? options.dbg(x) : dbg(x);
         const w = new this(workers);
         return new Promise((resolve, reject) => {
-            let id = ++seq;
+            const id = ++seq;
             // always handler, called both on resolve and on reject
             const always = err => new Promise((resolve, reject) => {
                 if (typeof options.done === 'function') {
@@ -106,6 +118,12 @@ class Work extends EventEmitter {
                 w.result.push(res);
                 w.pres = w.res;
                 w.res = res;
+                const namedIdx = w.getName(idx);
+                if (namedIdx) {
+                    if (typeof w[namedIdx] !== 'function') {
+                        w[namedIdx] = res;
+                    }
+                }
                 if (w.works.length === 0) {
                     always()
                         .then(() => {
