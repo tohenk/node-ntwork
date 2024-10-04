@@ -48,9 +48,13 @@ class Queue extends EventEmitter {
 
     next() {
         if (this.queues.length) {
-            if (this.pending) return;
+            if (this.pending) {
+                return;
+            }
             if (typeof this.check === 'function') {
-                if (!this.check()) return;
+                if (!this.check()) {
+                    return;
+                }
             }
             this.consume(this.queues.shift());
         } else {
@@ -76,9 +80,10 @@ class Queue extends EventEmitter {
         } else {
             this.queues.push(...queues);
         }
-        if (processNext) this.next();
+        if (processNext) {
+            this.next();
+        }
     }
-
 }
 
 module.exports = Queue;

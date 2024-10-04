@@ -32,6 +32,7 @@ let dbg = x => x;
  * Promise based worker for easy chaining.
  */
 class Work extends EventEmitter {
+
     result = []
 
     constructor(works) {
@@ -59,15 +60,14 @@ class Work extends EventEmitter {
     }
 
     next() {
-        if (this.works.length) {
-            if (this.pending) return;
+        if (this.works.length && !this.pending) {
             this.start();
         }
     }
 
     getRes(idx) {
         if (typeof idx === 'string') {
-            let sidx = this.names[idx];
+            const sidx = this.names[idx];
             if (sidx === undefined) {
                 throw new Error(`Named index ${idx} doesn't exist!`);
             }
@@ -92,7 +92,7 @@ class Work extends EventEmitter {
     }
 
     static works(workers, options) {
-        if (typeof options === 'undefined') {
+        if (options === undefined) {
             options = {};
         }
         if (typeof options === 'function') {
@@ -124,21 +124,24 @@ class Work extends EventEmitter {
                         w[namedIdx] = res;
                     }
                 }
-                if (w.works.length === 0) {
-                    always()
-                        .then(() => {
-                            debug('%d> [%d] resolved with %s', id, idx, d(w.rres));
-                            resolve(w.rres);
-                        })
-                        .catch(err => reject(err))
-                    ;
-                } else {
-                    w.once('work', f);
-                    if (typeof options.callback === 'function') {
-                        options.callback(() => w.next());
+                const nnext = () => {
+                    if (w.works.length === 0) {
+                        always()
+                            .then(() => {
+                                debug('%d> [%d] resolved with %s', id, idx, d(w.rres));
+                                resolve(w.rres);
+                            })
+                            .catch(err => reject(err))
+                        ;
                     } else {
+                        w.once('work', f);
                         w.next();
                     }
+                }
+                if (typeof options.callback === 'function') {
+                    options.callback(nnext, w);
+                } else {
+                    nnext();
                 }
             }
             // on error handler
