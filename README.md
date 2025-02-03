@@ -1,4 +1,4 @@
-# Nodejs queue and promise based work queue
+# Nodejs Queue and Promise Based Work Queue
 
 ## Queue Processing (queue.js)
 
@@ -28,6 +28,7 @@ be executed.
 
 ```js
 const { Work } = require('@ntlab/work');
+
 Work.works([
     ['step-1', w => new Promise((resolve, reject) => {
         console.log('First work');

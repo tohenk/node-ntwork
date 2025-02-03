@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2022-2024 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2022-2025 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -25,19 +25,61 @@
 const EventEmitter = require('events');
 
 /**
+ * Queue processing callback.
+ *
+ * @callback queueCallback
+ * @param {any} queue The queue
+ */
+
+/**
+ * Queue check callback.
+ *
+ * @callback checkCallback
+ * @returns {boolean} Return true to continue otherwise will pending processing
+ */
+
+/**
  * Queue processing.
+ * 
+ * Usage:
+ *
+ * ```js
+ * const { Queue } = require('@ntlab/work');
+ *
+ * const queues = ['One', 'Two', 'Three'];
+ * const q = new Queue(queues, seq => {
+ *     console.log(seq);
+ *     q.next();
+ * });
+ * q.once('done', () => {
+ *     console.log('Done');
+ * });
+ * ```
  */
 class Queue extends EventEmitter {
 
+    /**
+     * Constructor.
+     *
+     * @param {any[]} queues The queues, will empty when done
+     * @param {queueCallback} handler The processing callback
+     * @param {checkCallback} check The check callback
+     */
     constructor(queues, handler, check) {
         super();
         this.queues = queues || [];
         this.handler = handler;
         this.check = check;
+        this.pending = false;
         this.queue = null;
         this.next();
     }
 
+    /**
+     * Consume queue by emitting `queue` event.
+     *
+     * @param {any} queue The queue
+     */
     consume(queue) {
         process.nextTick(() => {
             this.queue = queue;
@@ -46,15 +88,21 @@ class Queue extends EventEmitter {
         });
     }
 
+    /**
+     * Process next queue, if no queue available then it will emitting
+     * `done` event.
+     */
     next() {
         if (this.queues.length) {
-            if (this.pending) {
-                return;
+            const nn = () => {
+                setTimeout(() => {
+                    process.nextTick(() => {
+                        this.next();
+                    });
+                }, 0);
             }
-            if (typeof this.check === 'function') {
-                if (!this.check()) {
-                    return;
-                }
+            if (this.pending || (typeof this.check === 'function' && !this.check())) {
+                return nn();
             }
             this.consume(this.queues.shift());
         } else {
@@ -62,10 +110,16 @@ class Queue extends EventEmitter {
         }
     }
 
+    /**
+     * Clear queue.
+     */
     clear() {
         this.queues = [];
     }
 
+    /**
+     * Emit `done` event.
+     */
     done() {
         process.nextTick(() => {
             this.emit('done');
@@ -73,6 +127,12 @@ class Queue extends EventEmitter {
         });
     }
 
+    /**
+     * Add more queue either on top of existing queue or as next queue.
+     *
+     * @param {any[]} queues Queue to add
+     * @param {boolean} top True to prioritize queue on top
+     */
     requeue(queues, top) {
         const processNext = this.queues.length === 0 && this.queue === null;
         if (top) {

@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2022-2024 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2022-2025 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -29,14 +29,14 @@ const Work = require('./work');
 const debug = require('debug')('work:test');
 
 test('queue', async (t) => {
-    await t.test('create queue from array', async (t) => {
+    await t.test('can create queue from array', async (t) => {
         const res = await new Promise((resolve) => {
-            let res;
+            let r;
             const q = new Queue([9], a => {
-                res = a;
+                r = a;
                 q.next();
             });
-            q.once('done', () => resolve(res));
+            q.once('done', () => resolve(r));
         });
         assert.strictEqual(res, 9);
     });
@@ -48,23 +48,58 @@ test('queue', async (t) => {
         });
         assert.strictEqual(a.length, 0);
     });
-    await t.test('requeue after creation', async (t) => {
+    await t.test('can process pending queue', async (t) => {
         const res = await new Promise((resolve) => {
-            let res;
+            const r = [];
+            const q = new Queue([1, 2], a => {
+                r.push(a);
+                if (a === 1) {
+                    q.pending = true;
+                }
+                q.next();
+            });
+            setTimeout(() => {
+                q.pending = false;
+            }, 1000);
+            q.once('done', () => resolve(r));
+        });
+        assert.deepEqual(res, [1, 2]);
+    });
+    await t.test('can process queue using check callback', async (t) => {
+        const res = await new Promise((resolve) => {
+            const r = [];
+            let processing = true;
+            const q = new Queue([1, 2], a => {
+                r.push(a);
+                if (a === 1) {
+                    processing = false;
+                }
+                q.next();
+            }, () => processing);
+            setTimeout(() => {
+                processing = true;
+            }, 1000);
+            q.once('done', () => resolve(r));
+        });
+        assert.deepEqual(res, [1, 2]);
+    });
+    await t.test('can re-queue after creation', async (t) => {
+        const res = await new Promise((resolve) => {
+            let r;
             const q = new Queue([], a => {
-                res = a;
+                r = a;
                 q.next();
             });
             q.on('done', () => {
-                if (res !== undefined) {
-                    resolve(res);
+                if (r !== undefined) {
+                    resolve(r);
                 }
             });
             q.requeue([4]);
         });
         assert.strictEqual(res, 4);
     });
-    await t.test('requeue long loop', async (t) => {
+    await t.test('can re-queue on long loop', async (t) => {
         const a = [];
         const res = await new Promise((resolve) => {
             const n = 10;
@@ -91,22 +126,22 @@ test('queue', async (t) => {
     });
 });
 test('work queue', async (t) => {
-    await t.test('work queue worker is function', async (t) => {
+    await t.test('worker is function', async (t) => {
         const res = await Work.works([() => Promise.resolve(true)]);
         assert.strictEqual(res, true);
     });
-    await t.test('work queue worker is array', async (t) => {
+    await t.test('worker is array', async (t) => {
         const res = await Work.works([[w => Promise.resolve(false)]]);
         assert.strictEqual(res, false);
     });
-    await t.test('work queue worker can be skipped', async (t) => {
+    await t.test('worker can be skipped', async (t) => {
         const res = await Work.works([
             [w => Promise.resolve(1)],
             [w => Promise.resolve(2), w => w.getRes(0) < 1],
         ]);
         assert.strictEqual(res, 1);
     });
-    await t.test('work queue worker can be named', async (t) => {
+    await t.test('worker can be named', async (t) => {
         const res = await Work.works([
             ['first', w => Promise.resolve(10)],
             ['second', w => Promise.resolve(20)],
@@ -115,7 +150,7 @@ test('work queue', async (t) => {
         ]);
         assert.strictEqual(res, 20);
     });
-    await t.test('work queue will call done callback when finished', async (t) => {
+    await t.test('will call done callback when finished', async (t) => {
         let res;
         await Work.works([() => Promise.resolve(19)], {
             async done(w, err) {
@@ -124,7 +159,7 @@ test('work queue', async (t) => {
         });
         assert.strictEqual(res, 19);
     });
-    await t.test('work queue will call done callback on empty work', async (t) => {
+    await t.test('will call done callback on empty work', async (t) => {
         let res;
         await Work.works([], {
             async done(w, err) {
@@ -133,7 +168,7 @@ test('work queue', async (t) => {
         });
         assert.strictEqual(res, true);
     });
-    await t.test('work queue will always be resolved regardless of rejection', async (t) => {
+    await t.test('will always be resolved regardless of rejection', async (t) => {
         let res;
         await new Promise((resolve, reject) => {
             Work.works([() => Promise.reject('rejected')], {alwaysResolved: true})
@@ -148,14 +183,14 @@ test('work queue', async (t) => {
         });
         assert.strictEqual(res, true);
     });
-    await t.test('work queue will always be resolved regardless of error', async (t) => {
+    await t.test('will always be resolved regardless of error', async (t) => {
         let res;
         await new Promise((resolve, reject) => {
             Work.works([
                 () => {
                     throw new Error('error is thrown');
                 }
-            ], {alwaysResolved: true})
+            ], {alwaysResolved: true, onerror: () => {}})
                 .then(() => {
                     res = true;
                     resolve();
@@ -167,7 +202,7 @@ test('work queue', async (t) => {
         });
         assert.strictEqual(res, true);
     });
-    await t.test('work queue will call callback on each execution', async (t) => {
+    await t.test('will call callback on each execution', async (t) => {
         let res = 0;
         await Work.works([
             [() => Promise.resolve(1)],
