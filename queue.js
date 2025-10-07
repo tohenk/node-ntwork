@@ -55,6 +55,8 @@ const EventEmitter = require('events');
  *     console.log('Done');
  * });
  * ```
+ *
+ * @author Toha <tohenk@yahoo.com>
  */
 class Queue extends EventEmitter {
 
@@ -67,10 +69,15 @@ class Queue extends EventEmitter {
      */
     constructor(queues, handler, check) {
         super();
+        /** @type {any[]} */
         this.queues = queues || [];
+        /** @type {queueCallback} */
         this.handler = handler;
+        /** @type {checkCallback} */
         this.check = check;
+        /** @type {boolean} */
         this.pending = false;
+        /** @type {any} */
         this.queue = null;
         this.next();
     }

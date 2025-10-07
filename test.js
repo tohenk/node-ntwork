@@ -216,4 +216,38 @@ test('work queue', async (t) => {
         });
         assert.strictEqual(res, 6);
     });
+    await t.test('can use work initializer', async (t) => {
+        let res;
+        Work.setInitializer(options => {
+            if (options.onerror === undefined) {
+                options.onerror = w => res = w.err.message;
+            }
+        });
+        await new Promise((resolve, reject) => {
+            Work.works([
+                [() => new Promise((resolve, reject) => {
+                    throw new Error('This is an error');
+                })],
+            ])
+            .then(() => resolve())
+            .catch(() => resolve());
+        });
+        assert.strictEqual(res, 'This is an error');
+    });
+    await t.test('can use global error logger', async (t) => {
+        let res;
+        Work
+            .setInitializer()
+            .setOnError(w => res = w.err.message);
+        await new Promise((resolve, reject) => {
+            Work.works([
+                [() => new Promise((resolve, reject) => {
+                    throw new Error('This is an another error');
+                })],
+            ])
+            .then(() => resolve())
+            .catch(() => resolve());
+        });
+        assert.strictEqual(res, 'This is an another error');
+    });
 });
