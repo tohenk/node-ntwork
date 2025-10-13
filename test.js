@@ -202,6 +202,21 @@ test('work queue', async (t) => {
         });
         assert.strictEqual(res, true);
     });
+    await t.test('will call onwork before each execution', async (t) => {
+        let res = 0;
+        await Work.works([
+            [() => Promise.resolve(1), () => false],
+            [() => Promise.resolve(2)],
+            [() => Promise.resolve(3)],
+        ], {
+            onwork(worker, w) {
+                if (worker.isEnabled(w)) {
+                    res++;
+                }
+            }
+        });
+        assert.strictEqual(res, 2);
+    });
     await t.test('will call callback on each execution', async (t) => {
         let res = 0;
         await Work.works([

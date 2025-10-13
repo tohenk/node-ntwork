@@ -29,8 +29,16 @@ const debug = require('debug')('work');
  * A work handler.
  *
  * @callback workHandler
- * @param {Work} worker Worker
+ * @param {Work} work Work object
  * @returns {Promise<any>}
+ */
+
+/**
+ * Do before work callback.
+ *
+ * @callback preWorkCallback
+ * @param {Worker} worker Worker
+ * @param {Work} work Work object
  */
 
 /**
@@ -38,14 +46,14 @@ const debug = require('debug')('work');
  *
  * @callback nextWorkCallback
  * @param {Function} next Next handler function
- * @param {Work} worker Worker
+ * @param {Work} work Work object
  */
 
 /**
  * Work done callback.
  *
  * @callback workDoneCallback
- * @param {Work} worker Worker
+ * @param {Work} work Work object
  * @param {Error|string} err Error object or message
  * @returns {Promise<any>}
  */
@@ -54,7 +62,7 @@ const debug = require('debug')('work');
  * A work error callback.
  *
  * @callback onErrorCallback
- * @param {Work} worker Worker
+ * @param {Work} work Work object
  */
 
 /**
@@ -150,8 +158,9 @@ class Work extends EventEmitter {
      * @param {Array} workers The works
      * @param {object} options The options
      * @param {boolean} options.alwaysResolved Set to true to always resolve instead of reject when error occured
-     * @param {nextWorkCallback} options.callback The next work callback
-     * @param {workDoneCallback} options.done The work done callback
+     * @param {nextWorkCallback} options.callback On next work callback
+     * @param {workDoneCallback} options.done On work done callback
+     * @param {preWorkCallback} options.onwork On pre work callback
      * @param {onErrorCallback} options.onerror On error callback
      * @param {Function} options.dbg Debugger function
      * @returns {Promise<any>}
@@ -256,6 +265,9 @@ class Work extends EventEmitter {
                 const winfo = worker.info;
                 const skip = !worker.isEnabled(w);
                 try {
+                    if (typeof options.onwork === 'function') {
+                        options.onwork(worker, w);
+                    }
                     if (skip) {
                         debug('%d> [%d] skip %s', id, idx, winfo);
                         next(idx, null);
@@ -406,6 +418,7 @@ class Worker
     }
 }
 
+Work.Worker = Worker;
 Work.seq = 0;
 Work.setDebugger();
 
