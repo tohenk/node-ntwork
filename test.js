@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2022-2025 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2022-2026 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -24,8 +24,7 @@
 
 const assert = require('node:assert');
 const test = require('node:test');
-const Queue = require('./queue');
-const Work = require('./work');
+const { Queue, Work } = require('.');
 const debug = require('debug')('work:test');
 
 test('queue', async (t) => {

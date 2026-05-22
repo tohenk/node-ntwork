@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2022-2026 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2024-2026 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-module.exports = {
-    Queue: require('./queue'),
-    Work: require('./work')
-}
+import * as Queue from './queue';
+import * as Work from './work';
+
+export = { Queue, Work };

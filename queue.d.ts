@@ -1,7 +1,7 @@
 /**
  * The MIT License (MIT)
  *
- * Copyright (c) 2022-2026 Toha <tohenk@yahoo.com>
+ * Copyright (c) 2024-2026 Toha <tohenk@yahoo.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -22,7 +22,17 @@
  * SOFTWARE.
  */
 
-module.exports = {
-    Queue: require('./queue'),
-    Work: require('./work')
+import { EventEmitter } from 'events';
+
+declare type QueueHandler<T> = (queue: T) => void;
+declare type QueueCheck = () => boolean;
+
+declare class Queue<T> extends EventEmitter {
+    pending: boolean;
+    constructor(queues: Set<T>, handler: QueueHandler<T>, check?: QueueCheck);
+    next(): void;
+    done(): void;
+    requeue(queues: Set<T>, top: boolean): void;
 }
+
+export = Queue;
