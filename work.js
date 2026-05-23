@@ -239,16 +239,16 @@ class Work extends EventEmitter {
                 w.err = err;
                 always(err)
                     .then(() => {
+                        if (typeof options.onerror === 'function') {
+                            options.onerror(w);
+                        } else if (typeof this.onerror === 'function') {
+                            this.onerror(w);
+                        }
                         if (options.alwaysResolved) {
                             debug('%d> [%d] rejected but return as resolved', id, idx);
                             resolve();
                         } else {
                             debug('%d> [%d] rejected with %s', id, idx, dbg(err));
-                            if (typeof options.onerror === 'function') {
-                                options.onerror(w);
-                            } else if (typeof this.onerror === 'function') {
-                                this.onerror(w);
-                            }
                             reject(err);
                         }
                     })
