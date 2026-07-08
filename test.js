@@ -152,6 +152,7 @@ test('work queue', async (t) => {
     await t.test('will call done callback when finished', async (t) => {
         let res;
         await Work.works([() => Promise.resolve(19)], {
+            /** @todo deprecated, use ondone */
             async done(w, err) {
                 res = w.getRes(0);
             }
@@ -161,7 +162,7 @@ test('work queue', async (t) => {
     await t.test('will call done callback on empty work', async (t) => {
         let res;
         await Work.works([], {
-            async done(w, err) {
+            async ondone(w, err) {
                 res = true;
             }
         });
@@ -201,7 +202,7 @@ test('work queue', async (t) => {
         });
         assert.strictEqual(res, true);
     });
-    await t.test('will call onwork before each execution', async (t) => {
+    await t.test('will call callback before each work', async (t) => {
         let res = 0;
         await Work.works([
             [() => Promise.resolve(1), () => false],
@@ -216,13 +217,14 @@ test('work queue', async (t) => {
         });
         assert.strictEqual(res, 2);
     });
-    await t.test('will call callback on each execution', async (t) => {
+    await t.test('will call callback on each next work using options', async (t) => {
         let res = 0;
         await Work.works([
             [() => Promise.resolve(1)],
             [() => Promise.resolve(2)],
             [() => Promise.resolve(3)],
         ], {
+            /** @todo deprecated, use onnext */
             callback(next, w) {
                 res += w.res;
                 next();
@@ -230,11 +232,29 @@ test('work queue', async (t) => {
         });
         assert.strictEqual(res, 6);
     });
+    await t.test('will call callback on each next work using function', async (t) => {
+        let res = 0;
+        await Work.works([
+            [() => Promise.resolve(1)],
+            [() => Promise.resolve(2)],
+            [() => Promise.resolve(3)],
+        ], (next, w) => {
+            res += w.res;
+            next();
+        });
+        assert.strictEqual(res, 6);
+    });
     await t.test('can use work initializer', async (t) => {
         let res;
         Work.setInitializer(options => {
-            if (options.onerror === undefined) {
-                options.onerror = w => res = w.err.message;
+            if (typeof options.onerror === 'function') {
+                options.onerrorhandler = options.onerror;
+            }
+            options.onerror = (w, opts) => {
+                res = w.err instanceof Error ? w.err.message : w.err;
+                if (typeof opts.onerrorhandler === 'function') {
+                    opts.onerrorhandler(w, opts);
+                }
             }
         });
         await new Promise((resolve, reject) => {
@@ -242,21 +262,25 @@ test('work queue', async (t) => {
                 [() => new Promise((resolve, reject) => {
                     throw new Error('This is an error');
                 })],
-            ])
+            ], {
+                onerror(w, opts) {
+                    res += ' [checked]';
+                }
+            })
             .then(() => resolve())
             .catch(() => resolve());
         });
-        assert.strictEqual(res, 'This is an error');
+        assert.strictEqual(res, 'This is an error [checked]');
     });
     await t.test('can use global error logger', async (t) => {
         let res;
         Work
             .setInitializer()
-            .setOnError(w => res = w.err.message);
+            .setOnError(w => res = w.err instanceof Error ? w.err.message : w.err);
         await new Promise((resolve, reject) => {
             Work.works([
                 [() => new Promise((resolve, reject) => {
-                    throw new Error('This is an another error');
+                    reject('This is an another error');
                 })],
             ])
             .then(() => resolve())

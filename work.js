@@ -28,7 +28,7 @@ const debug = require('debug')('work');
 /**
  * A work handler.
  *
- * @callback workHandler
+ * @callback WorkHandler
  * @param {Work} work Work object
  * @returns {Promise<any>}
  */
@@ -36,7 +36,7 @@ const debug = require('debug')('work');
 /**
  * Do before work callback.
  *
- * @callback preWorkCallback
+ * @callback BeforeWorkCallback
  * @param {Worker} worker Worker
  * @param {Work} work Work object
  */
@@ -44,7 +44,7 @@ const debug = require('debug')('work');
 /**
  * Next work callback.
  *
- * @callback nextWorkCallback
+ * @callback NextWorkCallback
  * @param {Function} next Next handler function
  * @param {Work} work Work object
  */
@@ -52,7 +52,7 @@ const debug = require('debug')('work');
 /**
  * Work done callback.
  *
- * @callback workDoneCallback
+ * @callback WorkDoneCallback
  * @param {Work} work Work object
  * @param {Error|string} err Error object or message
  * @returns {Promise<any>}
@@ -61,7 +61,7 @@ const debug = require('debug')('work');
 /**
  * A work error callback.
  *
- * @callback onErrorCallback
+ * @callback OnErrorCallback
  * @param {Work} work Work object
  */
 
@@ -158,10 +158,10 @@ class Work extends EventEmitter {
      * @param {Array} workers The works
      * @param {object} options The options
      * @param {boolean} options.alwaysResolved Set to true to always resolve instead of reject when error occured
-     * @param {nextWorkCallback} options.callback On next work callback
-     * @param {workDoneCallback} options.done On work done callback
-     * @param {preWorkCallback} options.onwork On pre work callback
-     * @param {onErrorCallback} options.onerror On error callback
+     * @param {BeforeWorkCallback} options.onwork On before work callback
+     * @param {NextWorkCallback} options.onnext On next work callback
+     * @param {WorkDoneCallback} options.ondone On work done callback
+     * @param {OnErrorCallback} options.onerror On error callback
      * @param {Function} options.dbg Debugger function
      * @returns {Promise<any>}
      */
@@ -170,10 +170,16 @@ class Work extends EventEmitter {
             options = {};
         }
         if (typeof options === 'function') {
-            options = {callback: options};
+            options = {onnext: options};
         }
         if (typeof this.onwork === 'function') {
             this.onwork(options);
+        }
+        if (typeof options.callback === 'function') {
+            options.onnext = options.callback;
+        }
+        if (typeof options.done === 'function') {
+            options.ondone = options.done;
         }
         const dbg = x => typeof options.dbg === 'function' ? options.dbg(x) : this.dbg(x);
         const w = new this(workers);
@@ -186,8 +192,8 @@ class Work extends EventEmitter {
              * @returns {Promise<undefined>}
              */
             const always = err => new Promise((resolve, reject) => {
-                if (typeof options.done === 'function') {
-                    options.done(w, err)
+                if (typeof options.ondone === 'function') {
+                    options.ondone(w, err)
                         .then(() => resolve())
                         .catch(err => reject(err));
                 } else {
@@ -223,8 +229,8 @@ class Work extends EventEmitter {
                         w.next();
                     }
                 }
-                if (typeof options.callback === 'function') {
-                    options.callback(nnext, w);
+                if (typeof options.onnext === 'function') {
+                    options.onnext(nnext, w);
                 } else {
                     nnext();
                 }
@@ -240,9 +246,9 @@ class Work extends EventEmitter {
                 always(err)
                     .then(() => {
                         if (typeof options.onerror === 'function') {
-                            options.onerror(w);
+                            options.onerror(w, options);
                         } else if (typeof this.onerror === 'function') {
-                            this.onerror(w);
+                            this.onerror(w, options);
                         }
                         if (options.alwaysResolved) {
                             debug('%d> [%d] rejected but return as resolved', id, idx);
@@ -284,9 +290,6 @@ class Work extends EventEmitter {
                             });
                     }
                 } catch (err) {
-                    if (winfo && options.onerror === undefined && this.onerror === undefined) {
-                        console.error('Got error %s:\n%s', err instanceof Error ? err.toString() : err, winfo);
-                    }
                     stop(idx, err);
                 }
             }
@@ -320,7 +323,7 @@ class Work extends EventEmitter {
     /**
      * Set on error handler.
      *
-     * @param {onErrorCallback} f The error callback
+     * @param {OnErrorCallback} f The error callback
      */
     static setOnError(f) {
         if (typeof f === 'function') {
@@ -358,7 +361,7 @@ class Worker
         this.name;
         /** @type {number} */
         this.idx;
-        /** @type {workHandler} */
+        /** @type {WorkHandler} */
         this.handler;
         /** @type {Function} */
         this.enabled;

@@ -26,10 +26,10 @@ import { EventEmitter } from 'events';
 
 declare type WorkHandler = (w: Work) => Promise<any>;
 declare type WorkState = (w: Work) => boolean;
-declare type WorkCallback = (next: Function, w: Work) => void;
-declare type WorkDo = (worker: Worker, w: Work) => void;
+declare type WorkNext = (next: Function, w: Work) => void;
+declare type WorkBefore = (worker: Worker, w: Work) => void;
 declare type WorkDone = (w: Work, err: string | Error) => Promise<any>;
-declare type WorkError = (w: Work) => void;
+declare type WorkError = (w: Work, options: object) => void;
 
 declare interface WorkerData {
     [index: number]: string | WorkHandler | WorkState;
@@ -37,9 +37,9 @@ declare interface WorkerData {
 
 declare interface WorkOptions {
     alwaysResolved: boolean;
-    callback: WorkCallback;
-    done: WorkDone;
-    onwork: WorkDo;
+    onwork: WorkBefore;
+    onnext: WorkNext;
+    ondone: WorkDone;
     onerror: WorkError;
 }
 
@@ -58,7 +58,8 @@ declare class Work extends EventEmitter {
 }
 
 declare namespace Work {
-    function works(workers: Set<Worker | WorkerData>, options?: WorkOptions): Promise<any>;
+    function works(works: Worker[] | WorkerData[], options?: WorkOptions): Promise<any>;
+    function works(works: Worker[] | WorkerData[], onnext: WorkNext): Promise<any>;
     function setInitializer(f: Function): typeof Work;
     function setOnError(f: WorkError): typeof Work;
     function setDebugger(f: Function): typeof Work;
