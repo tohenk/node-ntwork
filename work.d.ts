@@ -37,10 +37,10 @@ declare interface WorkerData {
 
 declare interface WorkOptions {
     alwaysResolved: boolean;
-    onwork: WorkBefore;
-    onnext: WorkNext;
-    ondone: WorkDone;
-    onerror: WorkError;
+    onWork: WorkBefore;
+    onNext: WorkNext;
+    onDone: WorkDone;
+    onError: WorkError;
 }
 
 declare class Worker {
@@ -55,14 +55,11 @@ declare class Work extends EventEmitter {
     pres: any;
     getRes(idx: number | string): any;
     getName(idx: number): string;
-}
-
-declare namespace Work {
-    function works(works: Worker[] | WorkerData[], options?: WorkOptions): Promise<any>;
-    function works(works: Worker[] | WorkerData[], onnext: WorkNext): Promise<any>;
-    function setInitializer(f: Function): typeof Work;
-    function setOnError(f: WorkError): typeof Work;
-    function setDebugger(f: Function): typeof Work;
+    static works(works: Worker[] | WorkerData[], options?: WorkOptions): Promise<any>;
+    static works(works: Worker[] | WorkerData[], onnext: WorkNext): Promise<any>;
+    static setInitializer(f: Function): typeof Work;
+    static setOnError(f: WorkError): typeof Work;
+    static setDebugger(f: Function): typeof Work;
 }
 
 export = Work;

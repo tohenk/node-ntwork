@@ -155,34 +155,37 @@ class Work extends EventEmitter {
     /**
      * Do works.
      *
-     * @param {Array} workers The works
+     * @param {Array} works The works
      * @param {object} options The options
      * @param {boolean} options.alwaysResolved Set to true to always resolve instead of reject when error occured
-     * @param {BeforeWorkCallback} options.onwork On before work callback
-     * @param {NextWorkCallback} options.onnext On next work callback
-     * @param {WorkDoneCallback} options.ondone On work done callback
-     * @param {OnErrorCallback} options.onerror On error callback
+     * @param {BeforeWorkCallback} options.onWork On before work callback
+     * @param {NextWorkCallback} options.onNext On next work callback
+     * @param {WorkDoneCallback} options.onDone On work done callback
+     * @param {OnErrorCallback} options.onError On error callback
      * @param {Function} options.dbg Debugger function
      * @returns {Promise<any>}
      */
-    static works(workers, options) {
-        if (options === undefined) {
-            options = {};
-        }
+    static works(works, options) {
+        options = options || {};
         if (typeof options === 'function') {
-            options = {onnext: options};
+            options = {onNext: options};
         }
-        if (typeof this.onwork === 'function') {
-            this.onwork(options);
+        if (typeof this.onWork === 'function') {
+            this.onWork(options);
         }
-        if (typeof options.callback === 'function') {
-            options.onnext = options.callback;
-        }
-        if (typeof options.done === 'function') {
-            options.ondone = options.done;
+        for (const [cb, migrated] of Object.entries({
+            callback: 'onNext',
+            done: 'onDone',
+            onwork: 'onWork',
+            onerror: 'onError',
+        })) {
+            if (typeof options[cb] === 'function') {
+                options[migrated] = options[cb];
+                delete options[cb];
+            }
         }
         const dbg = x => typeof options.dbg === 'function' ? options.dbg(x) : this.dbg(x);
-        const w = new this(workers);
+        const w = new this(works);
         return new Promise((resolve, reject) => {
             const id = ++this.seq;
             /**
@@ -192,8 +195,8 @@ class Work extends EventEmitter {
              * @returns {Promise<undefined>}
              */
             const always = err => new Promise((resolve, reject) => {
-                if (typeof options.ondone === 'function') {
-                    options.ondone(w, err)
+                if (typeof options.onDone === 'function') {
+                    options.onDone(w, err)
                         .then(() => resolve())
                         .catch(err => reject(err));
                 } else {
@@ -229,8 +232,8 @@ class Work extends EventEmitter {
                         w.next();
                     }
                 }
-                if (typeof options.onnext === 'function') {
-                    options.onnext(nnext, w);
+                if (typeof options.onNext === 'function') {
+                    options.onNext(nnext, w);
                 } else {
                     nnext();
                 }
@@ -245,10 +248,10 @@ class Work extends EventEmitter {
                 w.err = err;
                 always(err)
                     .then(() => {
-                        if (typeof options.onerror === 'function') {
-                            options.onerror(w, options);
-                        } else if (typeof this.onerror === 'function') {
-                            this.onerror(w, options);
+                        if (typeof options.onError === 'function') {
+                            options.onError(w, options);
+                        } else if (typeof this.onError === 'function') {
+                            this.onError(w, options);
                         }
                         if (options.alwaysResolved) {
                             debug('%d> [%d] rejected but return as resolved', id, idx);
@@ -271,8 +274,8 @@ class Work extends EventEmitter {
                 const winfo = worker.info;
                 const skip = !worker.isEnabled(w);
                 try {
-                    if (typeof options.onwork === 'function') {
-                        options.onwork(worker, w);
+                    if (typeof options.onWork === 'function') {
+                        options.onWork(worker, w);
                     }
                     if (skip) {
                         debug('%d> [%d] skip %s', id, idx, winfo);
@@ -295,7 +298,7 @@ class Work extends EventEmitter {
             }
             w.once('work', f);
             // guard against empty work
-            if (workers.length === 0) {
+            if (works.length === 0) {
                 always()
                     .then(() => {
                         debug('%d> [-] empty work, resolving instead', id);
@@ -327,9 +330,9 @@ class Work extends EventEmitter {
      */
     static setOnError(f) {
         if (typeof f === 'function') {
-            this.onerror = f;
+            this.onError = f;
         } else {
-            delete this.onerror;
+            delete this.onError;
         }
         return this;
     }
@@ -341,9 +344,9 @@ class Work extends EventEmitter {
      */
     static setInitializer(f) {
         if (typeof f === 'function') {
-            this.onwork = f;
+            this.onWork = f;
         } else {
-            delete this.onwork;
+            delete this.onWork;
         }
         return this;
     }

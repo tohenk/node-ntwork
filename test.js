@@ -152,8 +152,7 @@ test('work queue', async (t) => {
     await t.test('will call done callback when finished', async (t) => {
         let res;
         await Work.works([() => Promise.resolve(19)], {
-            /** @todo deprecated, use ondone */
-            async done(w, err) {
+            async onDone(w, err) {
                 res = w.getRes(0);
             }
         });
@@ -162,7 +161,7 @@ test('work queue', async (t) => {
     await t.test('will call done callback on empty work', async (t) => {
         let res;
         await Work.works([], {
-            async ondone(w, err) {
+            async onDone(w, err) {
                 res = true;
             }
         });
@@ -190,7 +189,7 @@ test('work queue', async (t) => {
                 () => {
                     throw new Error('error is thrown');
                 }
-            ], {alwaysResolved: true, onerror: () => {}})
+            ], {alwaysResolved: true, onError: () => {}})
                 .then(() => {
                     res = true;
                     resolve();
@@ -209,7 +208,7 @@ test('work queue', async (t) => {
             [() => Promise.resolve(2)],
             [() => Promise.resolve(3)],
         ], {
-            onwork(worker, w) {
+            onWork(worker, w) {
                 if (worker.isEnabled(w)) {
                     res++;
                 }
@@ -224,8 +223,7 @@ test('work queue', async (t) => {
             [() => Promise.resolve(2)],
             [() => Promise.resolve(3)],
         ], {
-            /** @todo deprecated, use onnext */
-            callback(next, w) {
+            onNext(next, w) {
                 res += w.res;
                 next();
             }
@@ -247,13 +245,13 @@ test('work queue', async (t) => {
     await t.test('can use work initializer', async (t) => {
         let res;
         Work.setInitializer(options => {
-            if (typeof options.onerror === 'function') {
-                options.onerrorhandler = options.onerror;
+            if (typeof options.onError === 'function') {
+                options.onErrorPrev = options.onError;
             }
-            options.onerror = (w, opts) => {
+            options.onError = (w, opts) => {
                 res = w.err instanceof Error ? w.err.message : w.err;
-                if (typeof opts.onerrorhandler === 'function') {
-                    opts.onerrorhandler(w, opts);
+                if (typeof opts.onErrorPrev === 'function') {
+                    opts.onErrorPrev(w, opts);
                 }
             }
         });
@@ -263,7 +261,7 @@ test('work queue', async (t) => {
                     throw new Error('This is an error');
                 })],
             ], {
-                onerror(w, opts) {
+                onError(w, opts) {
                     res += ' [checked]';
                 }
             })
